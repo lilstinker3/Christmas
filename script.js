@@ -6,14 +6,14 @@ const forbiddenPairs = [
 ];
 let previousPairs = JSON.parse(localStorage.getItem("previousPairs")) || [];
 
-function isValidPair(pair, allPairs) {
+function isValidPair(pair, currentPairs) {
     return (
         !forbiddenPairs.some(
             (forbidden) =>
                 (pair[0] === forbidden[0] && pair[1] === forbidden[1]) ||
                 (pair[0] === forbidden[1] && pair[1] === forbidden[0])
         ) &&
-        !allPairs.some(
+        !currentPairs.some(
             (pastPair) =>
                 (pair[0] === pastPair[0] && pair[1] === pastPair[1]) ||
                 (pair[0] === pastPair[1] && pair[1] === pastPair[0])
@@ -21,26 +21,44 @@ function isValidPair(pair, allPairs) {
     );
 }
 
-function drawPairs() {
+function drawNames() {
     const shuffledNames = [...names].sort(() => Math.random() - 0.5);
     const pairs = [];
-    for (let i = 0; i < shuffledNames.length; i += 2) {
-        const pair = [shuffledNames[i], shuffledNames[i + 1]];
-        if (isValidPair(pair, [...pairs, ...previousPairs])) {
-            pairs.push(pair);
-        } else {
-            // Restart if we can't form valid pairs
-            return drawPairs();
+    const currentPairs = [...previousPairs];
+
+    for (let i = 0; i < shuffledNames.length; i++) {
+        const giver = shuffledNames[i];
+        let receiver = null;
+
+        // Try to find a valid receiver
+        for (const candidate of shuffledNames) {
+            if (
+                candidate !== giver && // Can't pair with themselves
+                !pairs.some((pair) => pair.includes(candidate)) && // Not already a receiver
+                isValidPair([giver, candidate], currentPairs) // Obey rules
+            ) {
+                receiver = candidate;
+                break;
+            }
         }
+
+        if (!receiver) {
+            // Restart if no valid pairing is found
+            return drawNames();
+        }
+
+        pairs.push([giver, receiver]);
     }
+
+    // Update previous pairs
     previousPairs = pairs;
     localStorage.setItem("previousPairs", JSON.stringify(previousPairs));
     return pairs;
 }
 
 document.getElementById("draw-button").addEventListener("click", () => {
-    const pairs = drawPairs();
+    const pairs = drawNames();
     const pairsDiv = document.getElementById("pairs");
-    pairsDiv.innerHTML = pairs.map((pair) => `<p>${pair[0]} ➡️ ${pair[1]}</p>`).join("");
-    document.getElementById("message").textContent = "Pairs drawn successfully!";
+    pairsDiv.innerHTML = pairs.map((pair) => `<p>${pair[0]} 🎁 ${pair[1]}</p>`).join("");
+    document.getElementById("message").textContent = "Six pairs successfully drawn!";
 });
